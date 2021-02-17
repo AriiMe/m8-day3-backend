@@ -4,63 +4,49 @@ const bcrypt = require("bcryptjs");
 
 const AuthorSchema = new Schema(
     {
-        name: {
-            type: String,
-            required: true,
-        },
-        surename: {
-            type: String,
-            required: true,
-        },
-        img: {
-            type: String,
-            required: true,
-        },
-        password: {
-            type: String,
-            required: true,
-            minLength: 8,
-        },
-        email: {
-            type: String,
-            required: true,
-        },
-        role: {
-            type: String,
-            enum: ["admin", "author"],
-            required: true,
-        },
+        name: String,
+        img: String,
         articles: [{ type: Schema.Types.ObjectId, ref: "Articles" }],
+        email: { type: String, required: true },
+        password: { type: String, required: true, minlength: 8, selected: false },
+        tokenArray: [{ token: String }],
     },
     { timestamps: true }
 );
 
-AuthorSchema.statics.findByCredentials = async function (email, password) {
-    const author = await this.findOne({ email })
-    if (author) {
-        const isMatch = await bcrypt.compare(password, author.password)
-        if (isMatch) return author;
-        else return null
-    } else return null
-}
-
-AuthorSchema.methods.toJSON = function () {
-    const author = this
-    const userObject = author.toObject()
-
-    delete userObject.password
-    delete userObject.__v
-
-    return userObject
-
-}
+AuthorSchema.static(
+    "addArticleIdToAuthor",
+    async function (articleID, authorID) {
+        await AuthorModel.findByIdAndUpdate(
+            authorID,
+            {
+                $push: {
+                    articles: articleID,
+                },
+            },
+            { runValidators: true, new: true }
+        );
+    }
+);
 
 AuthorSchema.pre("save", async function (next) {
-    const author = this
-    if (author.isModified("password")) {
-        author.password = await bcrypt.hash(author.password, 10)
+    const user = this;
+    if (user.isModified("password")) {
+        user.password = await bcrypt.hash(user.password, 9);
     }
-    next()
-})
+    next();
+});
 
-module.exports = model("User", AuthorSchema)
+AuthorSchema.statics.findByCrendor = async function (email, password) {
+    const author = await this.findOne({ email });
+
+    if (author) {
+        const matching = await bcrypt.compare(password, author.password);
+        if (matching) return author;
+        else return null;
+    } else return null;
+};
+
+const AuthorModel = model("Author", AuthorSchema);
+
+module.exports = AuthorModel;

@@ -1,13 +1,15 @@
 /** @format */
 
 const express = require("express");
+const mongoose = require("mongoose");
 const ArticleSchema = require("./schema");
-const reviewsSchema = require("../reviews/schema");
+const ReviewSchema = require("../reviews/schema");
 const AuthorSchema = require("../authors/schema");
+const { authorize } = require("../authTools");
 
 const articleRouter = express.Router();
 
-articleRouter.post("/", async (req, res) => {
+articleRouter.post("/", authorize, async (req, res) => {
     try {
         console.log(req.body);
         const newArticle = new ArticleSchema(req.body);
@@ -19,9 +21,26 @@ articleRouter.post("/", async (req, res) => {
     }
 });
 
-articleRouter.get("/", async (req, res) => {
+articleRouter.post(
+    "/:id/add-to-author/:authorID",
+    authorize,
+    async (req, res) => {
+        try {
+            await AuthorSchema.addArticleIdToAuthor(
+                req.params.id,
+                req.params.authorID
+            );
+            res.send("added");
+        } catch (error) {
+            console.log(error);
+            res.status(500).send(error);
+        }
+    }
+);
+
+articleRouter.get("/", authorize, async (req, res) => {
     try {
-        const allArticles = await ArticleSchema.find();
+        const allArticles = await ArticleSchema.find().populate("author");
         res.send(allArticles);
     } catch (error) {
         console.log(error);
@@ -29,9 +48,11 @@ articleRouter.get("/", async (req, res) => {
     }
 });
 
-articleRouter.get("/:id", async (req, res) => {
+articleRouter.get("/:id", authorize, async (req, res) => {
     try {
-        const article = await ArticleSchema.findById(req.params.id);
+        const article = await ArticleSchema.findById(req.params.id).populate(
+            "author"
+        );
         res.send(article);
     } catch (error) {
         console.log(error);
@@ -39,7 +60,7 @@ articleRouter.get("/:id", async (req, res) => {
     }
 });
 
-articleRouter.put("/:id", async (req, res) => {
+articleRouter.put("/:id", authorize, async (req, res) => {
     try {
         const article = await ArticleSchema.findByIdAndUpdate(
             req.params.id,
@@ -49,7 +70,7 @@ articleRouter.put("/:id", async (req, res) => {
         if (article) {
             res.send(article);
         } else {
-            res.status(404).send("article doesn't exist");
+            res.status(404).send("ARTICLE NOT FOUND");
         }
     } catch (error) {
         console.log(error);
@@ -57,13 +78,13 @@ articleRouter.put("/:id", async (req, res) => {
     }
 });
 
-articleRouter.delete("/:id", async (req, res) => {
+articleRouter.delete("/:id", authorize, async (req, res) => {
     try {
         const article = await ArticleSchema.findByIdAndDelete(req.params.id);
         if (article) {
             res.send("ARTICLE DELETED");
         } else {
-            res.status(404).send("404 not found");
+            res.status(404).send("ARTICLE NOT FOUND");
         }
     } catch (error) {
         console.log(error);
@@ -71,9 +92,9 @@ articleRouter.delete("/:id", async (req, res) => {
     }
 });
 
-articleRouter.post("/:id", async (req, res) => {
+articleRouter.post("/:id", authorize, async (req, res) => {
     try {
-        const newReview = new reviewsSchema(req.body)
+        const newReview = new ReviewSchema(req.body);
         const review = await newReview.save();
         const article = await ArticleSchema.findByIdAndUpdate(
             req.params.id,
@@ -90,7 +111,7 @@ articleRouter.post("/:id", async (req, res) => {
     }
 });
 
-articleRouter.get("/:id/reviews", async (req, res) => {
+articleRouter.get("/:id/reviews", authorize, async (req, res) => {
     try {
         const reviews = await ArticleSchema.findById(req.params.id, { reviews: 1 });
         res.status(200).send(reviews.reviews);
@@ -99,7 +120,7 @@ articleRouter.get("/:id/reviews", async (req, res) => {
     }
 });
 
-articleRouter.get("/:id/reviews/:reviewID", async (req, res) => {
+articleRouter.get("/:id/reviews/:reviewID", authorize, async (req, res) => {
     try {
         const selectedReview = await ArticleSchema.findOne(
             { _id: mongoose.Types.ObjectId(req.params.id) },
@@ -121,7 +142,7 @@ articleRouter.get("/:id/reviews/:reviewID", async (req, res) => {
     }
 });
 
-articleRouter.put("/:id/reviews/:reviewID", async (req, res) => {
+articleRouter.put("/:id/reviews/:reviewID", authorize, async (req, res) => {
     try {
         const selectedReview = await ArticleSchema.findOne(
             { _id: mongoose.Types.ObjectId(req.params.id) },
@@ -157,7 +178,7 @@ articleRouter.put("/:id/reviews/:reviewID", async (req, res) => {
     }
 });
 
-articleRouter.delete("/:id/reviews/:reviewID", async (req, res) => {
+articleRouter.delete("/:id/reviews/:reviewID", authorize, async (req, res) => {
     try {
         const alteredReview = await ArticleSchema.findByIdAndUpdate(
             req.params.id,
@@ -174,35 +195,4 @@ articleRouter.delete("/:id/reviews/:reviewID", async (req, res) => {
     }
 });
 
-articleRouter.post("/:id/add-to-author/:authorID", async (req, res) => {
-    try {
-        await AuthorSchema.addArticleIdToAuthor(req.params.id, req.params.authorID);
-        res.send("added");
-    } catch (error) {
-        console.log(error);
-        res.status(500).send(error);
-    }
-});
-
-articleRouter.get("/", async (req, res) => {
-    try {
-        const allArticles = await ArticleSchema.find().populate("author");
-        res.send(allArticles);
-    } catch (error) {
-        console.log(error);
-        res.status(500).send(error);
-    }
-});
-
-articleRouter.get("/:id", async (req, res) => {
-    try {
-        const article = await ArticleSchema.findById(req.params.id).populate(
-            "author"
-        );
-        res.send(article);
-    } catch (error) {
-        console.log(error);
-        res.status(500).send(error);
-    }
-});
 module.exports = articleRouter;

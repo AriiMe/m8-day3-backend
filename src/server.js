@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-
+const listEndpoints = require('express-list-endpoints')
 
 const articleRouter = require("./medium");
 const authorRoute = require("./authors");
@@ -37,11 +37,9 @@ mongoose
     .connect(process.env.MONGO_ATLAS, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        useCreateIndex: true,
     })
     .then(
         server.listen(port, () => {
-            console.log("Running on port", port)
+            console.log(port, "hunting femboys");
         })
-    )
-    .catch(err => console.log(err))
+    );

@@ -1,41 +1,23 @@
+/** @format */
+
 const express = require("express");
+const AuthorModel = require("./schema");
 const AuthorSchema = require("./schema");
-const { adminOnly, basic } = require('../authTools')
-
-
+const { authenticate, authorize } = require("../authTools");
 const authorRouter = express.Router();
 
-
-authorRouter.get("/", basic, adminOnly, async (req, res, next) => {
+authorRouter.get("/", authorize, async (req, res, next) => {
     try {
-        const users = await AuthorSchema.find()
-        res.send(users)
-    } catch (error) {
-        next(error)
-
-    }
-})
-
-authorRouter.post("/signup", async (req, res, next) => {
-    try {
-        const newAuthor = await AuthorSchema(req.body)
-        const { _id } = await newAuthor.save()
-
-        res.status(201).send(_id)
-    } catch (error) {
-        next(error)
-    }
-})
-
-authorRouter.get("/:id", async (req, res) => {
-    try {
-        const selectedAuthor = await AuthorSchema.findById(req.params.id).populate(
-            "articles"
-        );
-        if (selectedAuthor) {
-            res.status(200).send(selectedAuthor);
+        if (req.query.name) {
+            const author = await AuthorSchema.findOne({ name: req.query.name });
+            if (author) {
+                res.status(200).send(author);
+            } else {
+                res.status(404).send("no author with that name");
+            }
         } else {
-            res.status(404).send("author with that id not found");
+            const allAuthors = await AuthorSchema.find();
+            res.status(200).send(allAuthors);
         }
     } catch (error) {
         console.log(error);
@@ -43,27 +25,95 @@ authorRouter.get("/:id", async (req, res) => {
     }
 });
 
-authorRouter.delete("/me", basic, async (req, res, next) => {
+authorRouter.post("/register", async (req, res) => {
     try {
-        await req.user.deleteOne()
-        res.status(204).send("yeeted")
+        const newAuthor = new AuthorSchema(req.body);
+        const { _id } = await newAuthor.save();
+        res.status(201).send(_id);
     } catch (error) {
-        next(error)
+        console.log(error);
+        res.send("Something went wrong");
     }
-})
+});
 
-authorRouter.put("/me", basic, async (req, res, next) => {
+authorRouter.post("/login", async (req, res) => {
     try {
-        const updates = Object.keys(req.body)
-        console.log("Updates", updates)
-
-        updates.forEach(update => (req.user[update] = req.body[update]))
-        await req.user.save()
-        res.send(req.user)
-
-        res.send(updates)
+        const { email, password } = req.body;
+        const author = await AuthorModel.findByCrendor(email, password);
+        const tokens = await authenticate(author);
+        res.send(tokens);
     } catch (error) {
-        next(error)
+        console.log(error);
+        next(error);
     }
-})
+});
+
+authorRouter.get("/:id", authorize, async (req, res) => {
+    try {
+        const selectedAuthor = await AuthorSchema.findById(req.params.id).populate(
+            "articles"
+        );
+        if (selectedAuthor) {
+            res.status(200).send(selectedAuthor);
+        } else {
+            res.status(404).send("We couldn't find an author with that id");
+        }
+    } catch (error) {
+        console.log(error);
+        res.send("Something went wrong");
+    }
+});
+
+authorRouter.delete("/:id", authorize, async (req, res) => {
+    try {
+        const author = await AuthorSchema.findByIdAndDelete(req.params.id);
+        if (author) {
+            res.send("AUTHOR DELETED");
+        } else {
+            res.status(404).send("AUTHOR NOT FOUND");
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+    }
+});
+
+authorRouter.put("/:id", authorize, async (req, res) => {
+    try {
+        const author = await AuthorSchema.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { runValidators: true, new: true }
+        );
+        if (author) {
+            res.send(author);
+        } else {
+            res.status(404).send("ARTICLE NOT FOUND");
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+    }
+});
+
+authorRouter.post("/refreshToken", async (req, res, next) => {
+    const oldRefresh = req.body.refreshToken;
+    if (!oldRefresh) {
+        const err = new Error("MISSING REFRESH TOKEN");
+        err.httpStatusCode = 400;
+        next(err);
+    } else {
+        try {
+            const newTokens = await refreshToken(oldRefresh);
+            res.send(newTokens);
+        } catch (error) {
+            console.log(error);
+            const err = new Error(error);
+            err.httpStatusCode = 403;
+            next(err);
+        }
+    }
+});
+
+
 module.exports = authorRouter;
