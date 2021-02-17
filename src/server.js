@@ -29,7 +29,7 @@ server.use(forbiddenHandler)
 server.use(notFoundHandler)
 server.use(genericErrorHandler)
 
-console.log(listEndpoints(server))
+//console.log(listEndpoints(server))
 
 mongoose.set("debug", true)
 

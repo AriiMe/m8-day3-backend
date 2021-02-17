@@ -30,6 +30,7 @@ const generateRefreshToken = (payload) =>
 const authenticate = async (author) => {
     try {
         const newAccess = await generateAccessToken({ _id: author._id });
+        
         const newRefresh = await generateRefreshToken({ _id: author._id });
         author.tokenArray.push({ token: newRefresh });
         await author.save();
