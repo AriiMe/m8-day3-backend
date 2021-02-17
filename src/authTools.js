@@ -5,7 +5,7 @@ const generateAccessToken = (payload) =>
     new Promise((res, rej) =>
         jwt.sign(
             payload,
-            process.env.ACCESS_SECRET,
+            process.env.ACCESS,
             { expiresIn: "15m" },
             (err, token) => {
                 if (err) rej(err);
@@ -18,7 +18,7 @@ const generateRefreshToken = (payload) =>
     new Promise((res, rej) =>
         jwt.sign(
             payload,
-            process.env.REFRESH_SECRET,
+            process.env.REFRESH,
             { expiresIn: "1 week" },
             (err, token) => {
                 if (err) rej(err);
@@ -42,7 +42,7 @@ const authenticate = async (author) => {
 
 const verifyAccess = (token) =>
     new Promise((res, rej) =>
-        jwt.verify(token, process.env.ACCESS_SECRET, (err, decodedToken) => {
+        jwt.verify(token, process.env.ACCESS, (err, decodedToken) => {
             if (err) rej(err);
             res(decodedToken);
         })
@@ -68,7 +68,7 @@ const authorize = async (req, res, next) => {
 
 const verifyRefresh = (token) =>
     new Promise((res, rej) =>
-        jwt.verify(token, process.env.REFRESH_SECRET, (err, decodedToken) => {
+        jwt.verify(token, process.env.REFRESH, (err, decodedToken) => {
             if (err) rej(err);
             res(decodedToken);
         })
